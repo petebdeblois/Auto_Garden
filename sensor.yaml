@@ -1,0 +1,16 @@
+- platform: influxdb
+  api_version: 2
+  token: !secret influxdb_token1
+  organization: !secret influxdb_org
+  port: 8089
+  ssl: false
+  host: 192.168.2.65
+  bucket: dump
+  queries_flux:
+    - name: "Rain Yesterday Influx"
+      range_start: "-1d"
+      unit_of_measurement: "mm"
+        # simply build your own query via influxDB2 web-UI
+      query: >
+          filter(fn: (r) => r["_measurement"] == "rain" and r["_field"] == "precipitation")
+      group_function: last

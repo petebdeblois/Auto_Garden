@@ -1,0 +1,67 @@
+- alias: Garden - Reset Helper Values
+  sequence:
+    - service: input_number.set_value
+      data:
+        value: 0
+      target:
+        entity_id:
+          - input_number.garden_total_rain_fallen
+          - input_number.garden_watering_duration
+    - service: input_datetime.set_datetime
+      data_template:
+        datetime: "{{ now() }}"
+      target:
+        entity_id: input_datetime.garden_last_watering_day
+    - service: input_number.set_value
+      data_template:
+        value: "{{ states('sensor.openweathermap_temperature') }}"
+      target:
+        entity_id: input_number.garden_maximum_temperature_measured
+    - service: notify.mobile_app_pete_s20
+      data:
+        message: Resetting the Sprinkler Helper Values
+        title: Garden
+  mode: single
+
+
+- alias: Garden - Water the garden
+  sequence:
+    - service: notify.mobile_app_pete_s20
+      data:
+        message: >-
+          Watering has started for {{
+          states("input_number.garden_watering_duration") | int}} minutes
+        title: Garden
+    - type: turn_on
+      device_id: 534cd27c18be0a940f27d3c638ea14f6
+      entity_id: switch.kasa_outdoor_1
+      domain: switch
+    - delay:
+        minutes: |
+          {{ states("input_number.garden_watering_duration") | int }}
+    - type: turn_off
+      device_id: 534cd27c18be0a940f27d3c638ea14f6
+      entity_id: switch.kasa_outdoor_1
+      domain: switch
+    - service: script.garden_reset_helper_values
+      data: {}
+    - service: notify.mobile_app_pete_s20
+      data:
+        message: Watering is done
+        title: Garden
+  mode: single
+
+- alias: Garden - Log Sprinkler action
+  sequence:
+  - service: notify.logging_garden
+    data:
+      message: >
+        {% set garden_days_since =
+        states('sensor.garden_days_since_last_watering_day') %} {% set
+        garden_max_temp =
+        states('input_number.garden_maximum_temperature_measured') %} {% set
+        rain_fallen = states('sensor.garden_total_rain_fallen_plus_expected')%}
+        {% set duration = states('input_number.garden_watering_duration') %} ,{{
+        garden_days_since }},{{ garden_max_temp }},{{ rain_fallen }},{{ duration
+        }}
+  mode: single

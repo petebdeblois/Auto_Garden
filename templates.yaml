@@ -1,0 +1,37 @@
+-  sensor:
+    - name: Garden - Total Expected Precipitation
+      icon: mdi:weather-pouring
+      unit_of_measurement: mm
+      state: > 
+        {%- set totalprec = 0 | float -%}
+        {%- set ns = namespace() -%}
+        {%- set ns.totalprec = 0 -%}
+        {%- for daypart in range(0,8) -%}
+          {%- set precipitation = state_attr('weather.openweathermap', 'forecast')[daypart].precipitation -%}
+          {%- set precipitation_probability = state_attr('weather.openweathermap', 'forecast')[daypart].precipitation_probability / 100 -%}
+          {%- if precipitation_probability > 0 -%}
+            {%- set precipitation = precipitation * precipitation_probability  -%}
+          {%- endif  -%}
+          {%- set ns.totalprec = ns.totalprec + precipitation -%}
+        {%- endfor -%}
+        {{ ns.totalprec | float | round(0) }}
+
+    - name: Garden - Total Rain Fallen Plus Expected
+      icon: mdi:weather-pouring
+      unit_of_measurement: mm
+      state: > 
+        {{ (states('input_number.garden_total_rain_fallen') | float + states('sensor.garden_total_expected_precipitation') | float) | round(2) }}
+
+    - name: Garden - Days Since Last Watering Day
+      icon: mdi:calendar
+      state: > 
+        {{ ((as_timestamp(now()) - as_timestamp(states('input_datetime.garden_last_watering_day'))) / 86400) | float | round(2) }}
+
+    - name: Garden - Current Temperature is Higher
+      icon: mdi:check
+      state: > 
+        {%- if states('sensor.quebec_temperature') | float > states('input_number.garden_maximum_temperature_measured') | float -%}
+          true
+        {%- else -%}
+          false
+        {%- endif -%}

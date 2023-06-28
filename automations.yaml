@@ -1,0 +1,173 @@
+- alias: Garden - Add Current Rain to Total Rain Fallen
+  description: ""
+  trigger:
+    - platform: state
+      entity_id:
+        - sensor.openweathermap_rain
+      id: rain
+    - platform: state
+      entity_id:
+        - sensor.rain_yesterday_influx
+      id: history
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: trigger
+              id: rain
+          sequence:
+            - service: input_number.set_value
+              data_template:
+                entity_id: input_number.garden_total_rain_fallen
+                value: >-
+                  {{ states("input_number.garden_total_rain_fallen") | float + 
+                  states("sensor.openweathermap_rain") | float}}
+        - conditions:
+            - condition: trigger
+              id: history
+          sequence:
+            - service: input_number.set_value
+              data_template:
+                entity_id: input_number.garden_total_rain_fallen
+                value: >-
+                  {{ states("input_number.garden_total_rain_fallen") | float +  
+                  states("sensor.rain_yesterday_influx") | float}}
+  mode: single
+
+- alias: Garden - Check If should be watered
+  description: ""
+  trigger:
+    - platform: sun
+      event: sunrise
+      offset: "1"
+  condition: []
+  action:
+    - choose:
+        - conditions:
+            - condition: numeric_state
+              entity_id: input_number.garden_maximum_temperature_measured
+              above: 31
+            - condition: numeric_state
+              entity_id: sensor.garden_total_rain_fallen_plus_expected
+              below: 15
+          sequence:
+            - service: input_number.set_value
+              data:
+                value: 15
+              target:
+                entity_id: input_number.garden_watering_duration
+            - service: script.log_garden_sprinkler_action
+              data: {}
+            - service: script.garden_water_the_garden
+              data: {}
+        - conditions:
+            - condition: numeric_state
+              entity_id: sensor.garden_days_since_last_watering_day
+              above: 2
+              below: 3
+            - condition: numeric_state
+              entity_id: input_number.garden_maximum_temperature_measured
+              above: 25
+              below: 31
+            - condition: numeric_state
+              entity_id: sensor.garden_total_rain_fallen_plus_expected
+              below: 10
+          sequence:
+            - service: input_number.set_value
+              data:
+                value: 15
+              target:
+                entity_id: input_number.garden_watering_duration
+            - service: script.log_garden_sprinkler_action
+              data: {}
+            - service: script.garden_water_the_garden
+              data: {}
+        - conditions:
+            - condition: numeric_state
+              entity_id: sensor.garden_days_since_last_watering_day
+              above: 3
+              below: 4
+            - condition: numeric_state
+              entity_id: input_number.garden_maximum_temperature_measured
+              above: 21
+              below: 26.1
+            - condition: numeric_state
+              entity_id: sensor.garden_total_rain_fallen_plus_expected
+              below: 5.1
+          sequence:
+            - service: input_number.set_value
+              data:
+                value: 10
+              target:
+                entity_id: input_number.garden_watering_duration
+            - service: script.log_garden_sprinkler_action
+              data: {}
+            - service: script.garden_water_the_garden
+              data: {}
+        - conditions:
+            - condition: numeric_state
+              entity_id: sensor.garden_days_since_last_watering_day
+              above: 3
+              below: 4
+            - condition: numeric_state
+              entity_id: input_number.garden_maximum_temperature_measured
+              above: 15
+              below: 21.1
+            - condition: numeric_state
+              entity_id: sensor.garden_total_rain_fallen_plus_expected
+              below: 5.1
+          sequence:
+            - service: input_number.set_value
+              data:
+                value: 5
+              target:
+                entity_id: input_number.garden_watering_duration
+            - service: script.log_garden_sprinkler_action
+              data: {}
+            - service: script.garden_water_the_garden
+              data: {}
+        - conditions:
+            - condition: numeric_state
+              entity_id: sensor.garden_days_since_last_watering_day
+              above: 3
+              below: 4
+          sequence:
+            - service: input_number.set_value
+              data:
+                value: 15
+              target:
+                entity_id: input_number.garden_watering_duration
+            - service: script.log_garden_sprinkler_action
+              data: {}
+            - service: script.garden_water_the_garden
+              data: {}
+            - service: script.garden_reset_helper_values
+              data: {}
+      default:
+        - service: input_number.set_value
+          data:
+            value: 5
+          target:
+            entity_id: input_number.garden_watering_duration
+        - service: script.log_garden_sprinkler_action
+          data: {}
+  mode: single
+
+
+- alias: Garden - Check Max Temp
+  description: ""
+  trigger:
+    - platform: state
+      entity_id:
+        - sensor.openweathermap_temperature
+  condition:
+    - condition: state
+      entity_id: sensor.garden_current_temperature_is_higher
+      state: "true"
+  action:
+    - service: input_number.set_value
+      data_template:
+        value: "{{ states('sensor.openweathermap_temperature') }}"
+      target:
+        entity_id: input_number.garden_maximum_temperature_measured
+  mode: single
